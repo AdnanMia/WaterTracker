@@ -7,11 +7,16 @@ public sealed class AuthService : IAuthService
 {
     private readonly HttpClient _http;
     private readonly ITokenStorageService _tokenStorage;
+    private readonly TokenAuthenticationStateProvider _authStateProvider;
 
-    public AuthService(HttpClient http, ITokenStorageService tokenStorage)
+    public AuthService(
+        HttpClient http,
+        ITokenStorageService tokenStorage,
+        TokenAuthenticationStateProvider authStateProvider)
     {
         _http = http;
         _tokenStorage = tokenStorage;
+        _authStateProvider = authStateProvider;
     }
 
     public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -28,6 +33,7 @@ public sealed class AuthService : IAuthService
                 return AuthResult.Failure("An unexpected error occurred. Please try again.");
 
             await _tokenStorage.SetTokenAsync(auth.Token);
+            _authStateProvider.NotifyAuthStateChanged();
             return AuthResult.Success();
         }
         catch (HttpRequestException)
@@ -50,6 +56,7 @@ public sealed class AuthService : IAuthService
                 return AuthResult.Failure("An unexpected error occurred. Please try again.");
 
             await _tokenStorage.SetTokenAsync(auth.Token);
+            _authStateProvider.NotifyAuthStateChanged();
             return AuthResult.Success();
         }
         catch (HttpRequestException)
@@ -58,11 +65,15 @@ public sealed class AuthService : IAuthService
         }
     }
 
-    public Task LogoutAsync() => _tokenStorage.RemoveTokenAsync();
+    public async Task LogoutAsync()
+    {
+        await _tokenStorage.RemoveTokenAsync();
+        _authStateProvider.NotifyAuthStateChanged();
+    }
 
     public async Task<bool> IsAuthenticatedAsync()
     {
-        var token = await _tokenStorage.GetTokenAsync();
-        return !string.IsNullOrEmpty(token);
+        var state = await _authStateProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated == true;
     }
 }
