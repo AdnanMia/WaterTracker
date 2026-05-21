@@ -1,0 +1,105 @@
+@page "/register"
+@layout AuthLayout
+@using WaterTracker.Client.Services.Authentication
+@using WaterTracker.Contracts.Authentication
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Create account – WaterTracker</PageTitle>
+
+<div class="register-card">
+    <h1 class="register-title">WaterTracker</h1>
+    <p class="register-subtitle">Create your account</p>
+
+    <EditForm Model="@_model" OnValidSubmit="HandleSubmitAsync">
+        <DataAnnotationsValidator />
+
+        <div class="field">
+            <label for="displayName">Display name</label>
+            <InputText id="displayName" @bind-Value="_model.DisplayName" autocomplete="name" />
+            <ValidationMessage For="@(() => _model.DisplayName)" />
+        </div>
+
+        <div class="field">
+            <label for="email">Email</label>
+            <InputText id="email" @bind-Value="_model.Email" type="email" autocomplete="email" />
+            <ValidationMessage For="@(() => _model.Email)" />
+        </div>
+
+        <div class="field">
+            <label for="password">Password</label>
+            <InputText id="password" @bind-Value="_model.Password" type="password" autocomplete="new-password" />
+            <ValidationMessage For="@(() => _model.Password)" />
+        </div>
+
+        <div class="field">
+            <label for="confirmPassword">Confirm password</label>
+            <InputText id="confirmPassword" @bind-Value="_model.ConfirmPassword" type="password" autocomplete="new-password" />
+            <ValidationMessage For="@(() => _model.ConfirmPassword)" />
+        </div>
+
+        @if (_errorMessage is not null)
+        {
+            <p class="error-message" role="alert">@_errorMessage</p>
+        }
+
+        <button type="submit" class="submit-btn" disabled="@_isLoading" aria-busy="@_isLoading">
+            @(_isLoading ? "Creating account..." : "Create account")
+        </button>
+    </EditForm>
+
+    <p class="login-prompt">
+        Already have an account? <a href="/login">Sign in</a>
+    </p>
+</div>
+
+@code {
+    private readonly RegisterFormModel _model = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleSubmitAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(new RegisterRequest
+            {
+                DisplayName = _model.DisplayName.Trim(),
+                Email = _model.Email.Trim(),
+                Password = _model.Password,
+                ConfirmPassword = _model.ConfirmPassword
+            });
+
+            if (result.Succeeded)
+                Navigation.NavigateTo("/");
+            else
+                _errorMessage = result.ErrorMessage;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private sealed class RegisterFormModel
+    {
+        [Required]
+        [MaxLength(100)]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(8)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}
