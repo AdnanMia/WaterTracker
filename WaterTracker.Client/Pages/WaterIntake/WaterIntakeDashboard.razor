@@ -25,9 +25,9 @@
         </div>
 
         <div class="add-form-section">
-            <h2>Add entry</h2>
+            <h2>@(_editingEntry is not null ? "Edit entry" : "Add entry")</h2>
 
-            <EditForm Model="@_form" OnValidSubmit="HandleAddEntryAsync">
+            <EditForm Model="@_form" OnValidSubmit="HandleFormSubmitAsync">
                 <DataAnnotationsValidator />
 
                 <div class="form-row">
@@ -52,9 +52,17 @@
                     <p class="form-success" role="status">@_formSuccess</p>
                 }
 
-                <button type="submit" class="btn-add" disabled="@_submitting" aria-busy="@_submitting">
-                    @(_submitting ? "Adding..." : "Add entry")
-                </button>
+                <div class="form-actions">
+                    <button type="submit" class="btn-add" disabled="@_submitting" aria-busy="@_submitting">
+                        @SubmitButtonLabel
+                    </button>
+                    @if (_editingEntry is not null)
+                    {
+                        <button type="button" class="btn-cancel-edit" @onclick="CancelEdit" disabled="@_submitting">
+                            Cancel
+                        </button>
+                    }
+                </div>
             </EditForm>
         </div>
 
@@ -77,6 +85,12 @@
                                 <span class="entry-created">Added @entry.CreatedAtUtc.ToString("dd MMM yyyy, HH:mm")</span>
                             </div>
                             <div class="entry-actions">
+                                <button type="button"
+                                        class="btn-edit-entry"
+                                        @onclick="() => StartEdit(entry)"
+                                        @onclick:stopPropagation="true">
+                                    Edit
+                                </button>
                                 <button type="button"
                                         class="btn-delete-entry"
                                         @onclick="() => RequestDelete(entry)"
@@ -133,8 +147,9 @@
     private bool _submitting;
     private string? _formError;
     private string? _formSuccess;
-    private AddEntryFormModel _form = new();
+    private EntryFormModel _form = new();
 
+    private WaterIntakeResponse? _editingEntry;
     private WaterIntakeResponse? _entryPendingDelete;
     private bool _deleting;
     private string? _deleteError;
@@ -144,11 +159,18 @@
             .Where(e => e.ConsumedAtUtc.Date == DateTime.UtcNow.Date)
             .Sum(e => e.AmountMl);
 
+    private string SubmitButtonLabel => _submitting
+        ? (_editingEntry is not null ? "Saving..." : "Adding...")
+        : (_editingEntry is not null ? "Save changes" : "Add entry");
+
     protected override async Task OnInitializedAsync()
     {
         _entries = await WaterIntakeClient.GetEntriesAsync();
         _loading = false;
     }
+
+    private Task HandleFormSubmitAsync() =>
+        _editingEntry is not null ? HandleUpdateEntryAsync() : HandleAddEntryAsync();
 
     private async Task HandleAddEntryAsync()
     {
@@ -170,7 +192,7 @@
             }
             else
             {
-                _form = new AddEntryFormModel();
+                _form = new EntryFormModel();
                 _formSuccess = "Entry added successfully.";
                 _entries = await WaterIntakeClient.GetEntriesAsync();
             }
@@ -179,6 +201,61 @@
         {
             _submitting = false;
         }
+    }
+
+    private async Task HandleUpdateEntryAsync()
+    {
+        if (_editingEntry is null)
+            return;
+
+        _submitting = true;
+        _formError = null;
+        _formSuccess = null;
+
+        try
+        {
+            var updated = await WaterIntakeClient.UpdateEntryAsync(_editingEntry.Id, new UpdateWaterIntakeRequest
+            {
+                AmountMl = _form.AmountMl,
+                ConsumedAtUtc = _form.ConsumedAtUtc
+            });
+
+            if (updated is null)
+            {
+                _formError = "Failed to save changes. Please try again.";
+            }
+            else
+            {
+                _editingEntry = null;
+                _form = new EntryFormModel();
+                _formSuccess = "Entry updated successfully.";
+                _entries = await WaterIntakeClient.GetEntriesAsync();
+            }
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void StartEdit(WaterIntakeResponse entry)
+    {
+        _editingEntry = entry;
+        _form = new EntryFormModel
+        {
+            AmountMl = entry.AmountMl,
+            ConsumedAtUtc = entry.ConsumedAtUtc
+        };
+        _formError = null;
+        _formSuccess = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editingEntry = null;
+        _form = new EntryFormModel();
+        _formError = null;
+        _formSuccess = null;
     }
 
     private void RequestDelete(WaterIntakeResponse entry)
@@ -207,6 +284,12 @@
 
             if (success)
             {
+                if (_editingEntry?.Id == _entryPendingDelete.Id)
+                {
+                    _editingEntry = null;
+                    _form = new EntryFormModel();
+                }
+
                 _entryPendingDelete = null;
                 _entries = await WaterIntakeClient.GetEntriesAsync();
             }
@@ -221,7 +304,7 @@
         }
     }
 
-    private sealed class AddEntryFormModel
+    private sealed class EntryFormModel
     {
         [Required]
         [Range(1, 5000, ErrorMessage = "Amount must be between 1 and 5000 ml.")]

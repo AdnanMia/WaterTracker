@@ -108,7 +108,6 @@
 }
 
 .btn-add {
-    margin-top: 1rem;
     padding: 0.5rem 1.25rem;
     background-color: #1b6ec2;
     color: #fff;
@@ -180,6 +179,52 @@
 
 .entry-actions {
     flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-edit-entry {
+    background: none;
+    border: 1px solid #b0c8e0;
+    border-radius: 4px;
+    color: #1b6ec2;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.btn-edit-entry:hover {
+    background-color: #f0f7ff;
+    border-color: #1b6ec2;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.btn-cancel-edit {
+    background: none;
+    border: 1px solid #d0d0d0;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    color: #444;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.btn-cancel-edit:hover:not(:disabled) {
+    background-color: #f5f5f5;
+}
+
+.btn-cancel-edit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .btn-delete-entry {
