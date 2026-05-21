@@ -36,6 +36,7 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
 
         if (IsTokenExpired(claims))
         {
+            // remove rather than just ignore so the stale token doesn't persist across reloads
             await _tokenStorage.RemoveTokenAsync();
             return Anonymous;
         }
@@ -52,6 +53,7 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
     private static bool IsTokenExpired(IEnumerable<Claim> claims)
     {
         var expClaim = claims.FirstOrDefault(c => c.Type == "exp")?.Value;
+        // treat missing or malformed expiry as expired
         if (expClaim is null || !long.TryParse(expClaim, out var expUnix))
             return true;
 

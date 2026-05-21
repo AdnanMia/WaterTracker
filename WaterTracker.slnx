@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="WaterTracker.API/WaterTracker.API.csproj" Id="f311c4bb-7793-43cf-8656-162bf411f049" />
   <Project Path="WaterTracker.Client/WaterTracker.Client.csproj" Id="137c6319-2eb5-4cd9-8f39-660e63929aa2" />
   <Project Path="WaterTracker.Contracts/WaterTracker.Contracts.csproj" Id="abe5289e-13bf-49b3-9c12-1222e2002264" />

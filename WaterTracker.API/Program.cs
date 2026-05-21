@@ -57,6 +57,7 @@ builder.Services
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
+            // default is 5 min, zero enforces the token's exact expiry with no grace period
             ClockSkew = TimeSpan.Zero
         };
     });
