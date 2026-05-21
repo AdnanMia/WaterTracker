@@ -1,0 +1,82 @@
+@page "/login"
+@layout AuthLayout
+@using WaterTracker.Client.Services.Authentication
+@using WaterTracker.Contracts.Authentication
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in – WaterTracker</PageTitle>
+
+<div class="login-card">
+    <h1 class="login-title">WaterTracker</h1>
+    <p class="login-subtitle">Sign in to your account</p>
+
+    <EditForm Model="@_model" OnValidSubmit="HandleSubmitAsync">
+        <DataAnnotationsValidator />
+
+        <div class="field">
+            <label for="email">Email</label>
+            <InputText id="email" @bind-Value="_model.Email" type="email" autocomplete="email" />
+            <ValidationMessage For="@(() => _model.Email)" />
+        </div>
+
+        <div class="field">
+            <label for="password">Password</label>
+            <InputText id="password" @bind-Value="_model.Password" type="password" autocomplete="current-password" />
+            <ValidationMessage For="@(() => _model.Password)" />
+        </div>
+
+        @if (_errorMessage is not null)
+        {
+            <p class="error-message" role="alert">@_errorMessage</p>
+        }
+
+        <button type="submit" class="submit-btn" disabled="@_isLoading" aria-busy="@_isLoading">
+            @(_isLoading ? "Signing in..." : "Sign in")
+        </button>
+    </EditForm>
+
+    <p class="register-prompt">
+        Don't have an account? <a href="/register">Create one</a>
+    </p>
+</div>
+
+@code {
+    private readonly LoginFormModel _model = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleSubmitAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(new LoginRequest
+            {
+                Email = _model.Email.Trim(),
+                Password = _model.Password
+            });
+
+            if (result.Succeeded)
+                Navigation.NavigateTo("/");
+            else
+                _errorMessage = result.ErrorMessage;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private sealed class LoginFormModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}
