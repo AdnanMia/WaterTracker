@@ -1,0 +1,316 @@
+@page "/water-intake"
+@attribute [Authorize]
+@using WaterTracker.Client.Services.WaterIntake
+@using WaterTracker.Contracts.WaterIntake
+@inject IWaterIntakeClient WaterIntakeClient
+
+<PageTitle>Water Intake – WaterTracker</PageTitle>
+
+<div class="dashboard">
+
+    <div class="dashboard-header">
+        <h1>Water Intake</h1>
+        <p>Track your daily hydration</p>
+    </div>
+
+    @if (_loading)
+    {
+        <p class="loading-text">Loading your entries...</p>
+    }
+    else
+    {
+        <div class="total-card">
+            <p class="total-label">Today's total</p>
+            <p class="total-value">@_todayTotalMl ml</p>
+        </div>
+
+        <div class="add-form-section">
+            <h2>@(_editingEntry is not null ? "Edit entry" : "Add entry")</h2>
+
+            <EditForm Model="@_form" OnValidSubmit="HandleFormSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div class="form-row">
+                    <div class="field">
+                        <label for="amountMl">Amount (ml)</label>
+                        <InputNumber id="amountMl" @bind-Value="_form.AmountMl" />
+                        <ValidationMessage For="@(() => _form.AmountMl)" />
+                    </div>
+                    <div class="field">
+                        <label for="consumedAt">Date and time</label>
+                        <InputDate id="consumedAt" Type="InputDateType.DateTimeLocal" @bind-Value="_form.ConsumedAtUtc" />
+                        <ValidationMessage For="@(() => _form.ConsumedAtUtc)" />
+                    </div>
+                </div>
+
+                @if (_formError is not null)
+                {
+                    <p class="form-error" role="alert">@_formError</p>
+                }
+                @if (_formSuccess is not null)
+                {
+                    <p class="form-success" role="status">@_formSuccess</p>
+                }
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-add" disabled="@_submitting" aria-busy="@_submitting">
+                        @SubmitButtonLabel
+                    </button>
+                    @if (_editingEntry is not null)
+                    {
+                        <button type="button" class="btn-cancel-edit" @onclick="CancelEdit" disabled="@_submitting">
+                            Cancel
+                        </button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+
+        <div class="entries-section">
+            <h2>Recent entries</h2>
+
+            @if (_entries.Count == 0)
+            {
+                <p class="empty-state">No entries yet. Add your first one above.</p>
+            }
+            else
+            {
+                <ul class="entry-list">
+                    @foreach (var entry in _entries)
+                    {
+                        <li class="entry-item">
+                            <div class="entry-info">
+                                <span class="entry-amount">@entry.AmountMl ml</span>
+                                <span class="entry-consumed">@entry.ConsumedAtUtc.ToString("dd MMM yyyy, HH:mm")</span>
+                                <span class="entry-created">Added @entry.CreatedAtUtc.ToString("dd MMM yyyy, HH:mm")</span>
+                            </div>
+                            <div class="entry-actions">
+                                <button type="button"
+                                        class="btn-edit-entry"
+                                        @onclick="() => StartEdit(entry)"
+                                        @onclick:stopPropagation="true">
+                                    Edit
+                                </button>
+                                <button type="button"
+                                        class="btn-delete-entry"
+                                        @onclick="() => RequestDelete(entry)"
+                                        @onclick:stopPropagation="true">
+                                    Delete
+                                </button>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+
+</div>
+
+@if (_entryPendingDelete is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h3 id="modal-title" class="modal-title">Delete this entry?</h3>
+            <p class="modal-detail">
+                <strong>@_entryPendingDelete.AmountMl ml</strong>
+                – @_entryPendingDelete.ConsumedAtUtc.ToString("dd MMM yyyy, HH:mm")
+            </p>
+
+            @if (_deleteError is not null)
+            {
+                <p class="form-error" role="alert">@_deleteError</p>
+            }
+
+            <div class="modal-actions">
+                <button type="button"
+                        class="btn-cancel"
+                        @onclick="CancelDelete"
+                        disabled="@_deleting">
+                    Cancel
+                </button>
+                <button type="button"
+                        class="btn-confirm-delete"
+                        @onclick="ConfirmDeleteAsync"
+                        disabled="@_deleting"
+                        aria-busy="@_deleting">
+                    @(_deleting ? "Deleting..." : "Delete")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<WaterIntakeResponse> _entries = [];
+    private bool _loading = true;
+    private bool _submitting;
+    private string? _formError;
+    private string? _formSuccess;
+    private EntryFormModel _form = new();
+
+    private WaterIntakeResponse? _editingEntry;
+    private WaterIntakeResponse? _entryPendingDelete;
+    private bool _deleting;
+    private string? _deleteError;
+
+    private int _todayTotalMl =>
+        _entries
+            .Where(e => e.ConsumedAtUtc.Date == DateTime.UtcNow.Date)
+            .Sum(e => e.AmountMl);
+
+    private string SubmitButtonLabel => _submitting
+        ? (_editingEntry is not null ? "Saving..." : "Adding...")
+        : (_editingEntry is not null ? "Save changes" : "Add entry");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _entries = await WaterIntakeClient.GetEntriesAsync();
+        _loading = false;
+    }
+
+    private Task HandleFormSubmitAsync() =>
+        _editingEntry is not null ? HandleUpdateEntryAsync() : HandleAddEntryAsync();
+
+    private async Task HandleAddEntryAsync()
+    {
+        _submitting = true;
+        _formError = null;
+        _formSuccess = null;
+
+        try
+        {
+            var created = await WaterIntakeClient.CreateEntryAsync(new LogWaterIntakeRequest
+            {
+                AmountMl = _form.AmountMl,
+                ConsumedAtUtc = _form.ConsumedAtUtc
+            });
+
+            if (created is null)
+            {
+                _formError = "Failed to add entry. Please try again.";
+            }
+            else
+            {
+                _form = new EntryFormModel();
+                _formSuccess = "Entry added successfully.";
+                _entries = await WaterIntakeClient.GetEntriesAsync();
+            }
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private async Task HandleUpdateEntryAsync()
+    {
+        if (_editingEntry is null)
+            return;
+
+        _submitting = true;
+        _formError = null;
+        _formSuccess = null;
+
+        try
+        {
+            var updated = await WaterIntakeClient.UpdateEntryAsync(_editingEntry.Id, new UpdateWaterIntakeRequest
+            {
+                AmountMl = _form.AmountMl,
+                ConsumedAtUtc = _form.ConsumedAtUtc
+            });
+
+            if (updated is null)
+            {
+                _formError = "Failed to save changes. Please try again.";
+            }
+            else
+            {
+                _editingEntry = null;
+                _form = new EntryFormModel();
+                _formSuccess = "Entry updated successfully.";
+                _entries = await WaterIntakeClient.GetEntriesAsync();
+            }
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void StartEdit(WaterIntakeResponse entry)
+    {
+        _editingEntry = entry;
+        _form = new EntryFormModel
+        {
+            AmountMl = entry.AmountMl,
+            ConsumedAtUtc = entry.ConsumedAtUtc
+        };
+        _formError = null;
+        _formSuccess = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editingEntry = null;
+        _form = new EntryFormModel();
+        _formError = null;
+        _formSuccess = null;
+    }
+
+    private void RequestDelete(WaterIntakeResponse entry)
+    {
+        _entryPendingDelete = entry;
+        _deleteError = null;
+    }
+
+    private void CancelDelete()
+    {
+        _entryPendingDelete = null;
+        _deleteError = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_entryPendingDelete is null)
+            return;
+
+        _deleting = true;
+        _deleteError = null;
+
+        try
+        {
+            var success = await WaterIntakeClient.DeleteEntryAsync(_entryPendingDelete.Id);
+
+            if (success)
+            {
+                if (_editingEntry?.Id == _entryPendingDelete.Id)
+                {
+                    _editingEntry = null;
+                    _form = new EntryFormModel();
+                }
+
+                _entryPendingDelete = null;
+                _entries = await WaterIntakeClient.GetEntriesAsync();
+            }
+            else
+            {
+                _deleteError = "Failed to delete the entry. Please try again.";
+            }
+        }
+        finally
+        {
+            _deleting = false;
+        }
+    }
+
+    private sealed class EntryFormModel
+    {
+        [Required]
+        [Range(1, 5000, ErrorMessage = "Amount must be between 1 and 5000 ml.")]
+        public int AmountMl { get; set; } = 250;
+
+        [Required]
+        public DateTime ConsumedAtUtc { get; set; } = DateTime.UtcNow;
+    }
+}
