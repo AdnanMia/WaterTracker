@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WaterTracker.Core.Interfaces;
 using WaterTracker.Infrastructure.Identity;
 using WaterTracker.Infrastructure.Persistence;
+using WaterTracker.Infrastructure.Services;
 
 namespace WaterTracker.Infrastructure;
 
@@ -37,6 +38,8 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<AppDbContext>()
         .AddSignInManager()
         .AddDefaultTokenProviders();
+
+        services.AddScoped<IWaterIntakeService, WaterIntakeService>();
 
         return services;
     }
