@@ -1,0 +1,86 @@
+.register-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+.register-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 0.25rem;
+    text-align: center;
+}
+
+.register-subtitle {
+    color: #666;
+    font-size: 0.95rem;
+    text-align: center;
+    margin: 0 0 1.75rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}
+
+.field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.3rem;
+}
+
+.field input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    transition: border-color 0.15s;
+}
+
+.field input:focus {
+    outline: none;
+    border-color: #1b6ec2;
+    box-shadow: 0 0 0 3px rgba(27, 110, 194, 0.1);
+}
+
+.error-message {
+    color: #c0392b;
+    font-size: 0.875rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 0.6rem;
+    background-color: #1b6ec2;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.15s;
+}
+
+.submit-btn:hover:not(:disabled) {
+    background-color: #1861ac;
+}
+
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.login-prompt {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #666;
+    margin: 1.25rem 0 0;
+}
