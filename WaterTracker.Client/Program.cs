@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using WaterTracker.Client;
+using WaterTracker.Client.Infrastructure;
 using WaterTracker.Client.Services.Authentication;
+using WaterTracker.Client.Services.WaterIntake;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -19,5 +21,11 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
 
 builder.Services.AddHttpClient<IAuthService, AuthService>(client =>
     client.BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + '/'));
+
+builder.Services.AddTransient<AuthHeaderHandler>();
+
+builder.Services.AddHttpClient<IWaterIntakeClient, WaterIntakeClient>(client =>
+    client.BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + '/'))
+    .AddHttpMessageHandler<AuthHeaderHandler>();
 
 await builder.Build().RunAsync();
