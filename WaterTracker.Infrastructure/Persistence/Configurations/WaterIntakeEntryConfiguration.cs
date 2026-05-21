@@ -23,6 +23,7 @@ internal sealed class WaterIntakeEntryConfiguration : IEntityTypeConfiguration<W
         builder.Property(x => x.CreatedAtUtc)
             .IsRequired();
 
+        // all queries filter by UserId, index avoids a full table scan per user request
         builder.HasIndex(x => x.UserId);
     }
 }

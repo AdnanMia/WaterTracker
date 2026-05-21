@@ -26,7 +26,7 @@ public sealed class TokenService : ITokenService
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.NameIdentifier, userId), // Sub is the JWT standard; NameIdentifier is what ASP.NET Identity expects when reading claims
             new Claim(JwtRegisteredClaimNames.Email, email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim("displayName", displayName)
